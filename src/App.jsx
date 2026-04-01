@@ -32,7 +32,7 @@ function App() {
         </p>
       </section>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;
