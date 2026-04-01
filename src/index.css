@@ -1,0 +1,260 @@
+:root {
+  font-family: Georgia, "Times New Roman", serif;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at top left, rgba(78, 118, 196, 0.28), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(117, 165, 255, 0.18), transparent 28%),
+    linear-gradient(145deg, #041a3a 0%, #07244d 45%, #0a2e63 100%);
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  color: #ffffff;
+  background: transparent;
+}
+
+button {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  inset: 5% auto auto 8%;
+  width: 14rem;
+  height: 14rem;
+  border-radius: 50%;
+  background: rgba(164, 201, 255, 0.1);
+  filter: blur(12px);
+  animation: floatGlow 8s ease-in-out infinite;
+}
+
+.top-nav-wrap {
+  position: relative;
+  z-index: 1;
+  animation: navDrop 0.9s ease-out both;
+}
+
+.top-nav {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(5, 24, 54, 0.72);
+  box-shadow: 0 18px 48px rgba(0, 8, 24, 0.34);
+  backdrop-filter: blur(16px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.brand-mark {
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #dbeaff 0%, #8ec1ff 100%);
+  color: #07244d;
+  box-shadow: 0 10px 25px rgba(151, 196, 255, 0.28);
+}
+
+.brand-text {
+  text-transform: lowercase;
+  font-size: 1rem;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.nav-links a,
+.nav-cta {
+  position: relative;
+  border-radius: 999px;
+  padding: 0.8rem 1.15rem;
+  color: #f8fbff;
+  transition:
+    transform 220ms ease,
+    background-color 220ms ease,
+    color 220ms ease,
+    box-shadow 220ms ease;
+}
+
+.nav-links a::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 0.45rem;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #b4d6ff, #ffffff);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 220ms ease;
+}
+
+.nav-links a:hover,
+.nav-links a:focus-visible {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  transform: translateY(-2px);
+}
+
+.nav-links a:hover::after,
+.nav-links a:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.nav-cta {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: linear-gradient(135deg, #ffffff 0%, #cfe4ff 100%);
+  color: #082754;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.nav-cta:hover,
+.nav-cta:focus-visible {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 30px rgba(166, 204, 255, 0.22);
+}
+
+.hero-panel {
+  width: min(1120px, 100%);
+  margin: 4.5rem auto 0;
+  padding: 5rem 0 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.85rem;
+  color: #b7d4ff;
+}
+
+h1 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(3rem, 8vw, 6.2rem);
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+.description {
+  margin: 1.4rem 0 0;
+  max-width: 38rem;
+  font-size: 1.08rem;
+  color: #d7e7ff;
+}
+
+@keyframes navDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes floatGlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(20px, 18px, 0);
+  }
+}
+
+@media (max-width: 860px) {
+  .top-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .brand {
+    justify-content: center;
+  }
+
+  .nav-links {
+    justify-content: center;
+  }
+
+  .nav-cta {
+    width: 100%;
+  }
+
+  .hero-panel {
+    margin-top: 2.5rem;
+    padding-top: 2rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    padding: 1rem;
+  }
+
+  .top-nav {
+    padding: 1rem;
+    border-radius: 20px;
+  }
+
+  .nav-links {
+    gap: 0.35rem;
+  }
+
+  .nav-links a,
+  .nav-cta {
+    width: 100%;
+    text-align: center;
+  }
+}
