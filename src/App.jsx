@@ -1,95 +1,105 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
-import './index.css'
+import "./index.css";
 
-const accessStorageKey = 'miso-home-library-unlocked'
-const libraryStorageKey = 'miso-home-library-items'
-const libraryPassword = 'misoloveeggs'
-const managementPassword = 'bhimmagar9810'
+const accessStorageKey = "miso-home-library-unlocked";
+const libraryStorageKey = "miso-home-library-items";
+const libraryPassword = "misoloveeggs";
+const managementPassword = "bhimmagar9810";
 
 const sections = [
   {
-    id: 'book',
-    icon: '📚',
-    title: 'Books',
-    singularLabel: 'Book',
-    description: 'Stories, journals, and beloved reads kept close to the shelf.',
-    emptyTitle: 'No books yet',
-    emptyText: 'Add your first book with the + Add button.',
+    id: "book",
+    icon: "📚",
+    title: "Books",
+    singularLabel: "Book",
+    description:
+      "Stories, journals, and beloved reads kept close to the shelf.",
+    emptyTitle: "No books yet",
+    emptyText: "Add your first book with the + Add button.",
   },
   {
-    id: 'article',
-    icon: '📰',
-    title: 'Articles',
-    singularLabel: 'Article',
-    description: 'Thoughtful notes, essays, and reflections worth returning to.',
-    emptyTitle: 'No articles yet',
-    emptyText: 'Add your first article with the + Add button.',
+    id: "article",
+    icon: "📰",
+    title: "Articles",
+    singularLabel: "Article",
+    description:
+      "Thoughtful notes, essays, and reflections worth returning to.",
+    emptyTitle: "No articles yet",
+    emptyText: "Add your first article with the + Add button.",
   },
   {
-    id: 'poetry',
-    icon: '🌸',
-    title: 'Poetry',
-    singularLabel: 'Poetry',
-    description: 'Soft lines, verses, and small pieces that deserve quiet space.',
-    emptyTitle: 'No poetry yet',
-    emptyText: 'Add your first poem with the + Add button.',
+    id: "poetry",
+    icon: "🌸",
+    title: "Poetry",
+    singularLabel: "Poetry",
+    description:
+      "Soft lines, verses, and small pieces that deserve quiet space.",
+    emptyTitle: "No poetry yet",
+    emptyText: "Add your first poem with the + Add button.",
   },
-]
+];
 
 const initialAddForm = {
-  type: 'book',
-  title: '',
-  author: '',
-  description: '',
-  content: '',
-}
+  type: "book",
+  title: "",
+  author: "",
+  description: "",
+  content: "",
+};
 
 function readStoredItems() {
-  if (typeof window === 'undefined') {
-    return []
+  if (typeof window === "undefined") {
+    return [];
   }
 
   try {
-    const storedItems = window.localStorage.getItem(libraryStorageKey)
-    const parsedItems = storedItems ? JSON.parse(storedItems) : []
-    return Array.isArray(parsedItems) ? parsedItems : []
+    const storedItems = window.localStorage.getItem(libraryStorageKey);
+    const parsedItems = storedItems ? JSON.parse(storedItems) : [];
+    return Array.isArray(parsedItems) ? parsedItems : [];
   } catch {
-    return []
+    return [];
   }
 }
 
 function createItemId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
   }
 
-  return `item-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  return `item-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function parseReaderBlocks(content = '') {
+function parseReaderBlocks(content = "") {
   return content
-    .replace(/\r\n/g, '\n')
+    .replace(/\r\n/g, "\n")
     .trim()
     .split(/\n{2,}/)
     .map((block) => block.trim())
     .filter(Boolean)
     .flatMap((block) => {
       const lines = block
-        .split('\n')
+        .split("\n")
         .map((line) => line.trim())
-        .filter(Boolean)
+        .filter(Boolean);
 
-      const bulletLines = lines.filter((line) => /^[-*•]\s+/.test(line))
-      const firstBulletIndex = lines.findIndex((line) => /^[-*•]\s+/.test(line))
+      const bulletLines = lines.filter((line) => /^[-*•]\s+/.test(line));
+      const firstBulletIndex = lines.findIndex((line) =>
+        /^[-*•]\s+/.test(line),
+      );
 
       if (bulletLines.length === lines.length) {
         return [
           {
-            type: 'list',
-            items: bulletLines.map((line) => line.replace(/^[-*•]\s+/, '').trim()),
+            type: "list",
+            items: bulletLines.map((line) =>
+              line.replace(/^[-*•]\s+/, "").trim(),
+            ),
           },
-        ]
+        ];
       }
 
       if (
@@ -98,106 +108,93 @@ function parseReaderBlocks(content = '') {
       ) {
         return [
           {
-            type: 'paragraph',
-            text: lines.slice(0, firstBulletIndex).join(' '),
+            type: "paragraph",
+            text: lines.slice(0, firstBulletIndex).join(" "),
           },
           {
-            type: 'list',
+            type: "list",
             items: lines
               .slice(firstBulletIndex)
-              .map((line) => line.replace(/^[-*•]\s+/, '').trim()),
+              .map((line) => line.replace(/^[-*•]\s+/, "").trim()),
           },
-        ]
+        ];
       }
 
       return [
         {
-          type: 'paragraph',
-          text: lines.join(' '),
+          type: "paragraph",
+          text: lines.join(" "),
         },
-      ]
-    })
+      ];
+    });
 }
 
 function App() {
   const [isUnlocked, setIsUnlocked] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false
+    if (typeof window === "undefined") {
+      return false;
     }
 
-    return window.localStorage.getItem(accessStorageKey) === 'true'
-  })
-  const [password, setPassword] = useState('')
-  const [unlockError, setUnlockError] = useState('')
-  const [items, setItems] = useState(() => readStoredItems())
-  const [isAddOpen, setIsAddOpen] = useState(false)
-  const [form, setForm] = useState(initialAddForm)
-  const [activeItem, setActiveItem] = useState(null)
-  const [editingItemId, setEditingItemId] = useState(null)
-  const [protectedAction, setProtectedAction] = useState(null)
-  const [actionPasswordInput, setActionPasswordInput] = useState('')
-  const [actionError, setActionError] = useState('')
+    return window.localStorage.getItem(accessStorageKey) === "true";
+  });
+  const [password, setPassword] = useState("");
+  const [unlockError, setUnlockError] = useState("");
+  const [items, setItems] = useState(() => readStoredItems());
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [form, setForm] = useState(initialAddForm);
+  const [activeItem, setActiveItem] = useState(null);
+  const [editingItemId, setEditingItemId] = useState(null);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
+    if (typeof window === "undefined") {
+      return;
     }
 
-    window.localStorage.setItem(libraryStorageKey, JSON.stringify(items))
-  }, [items])
+    window.localStorage.setItem(libraryStorageKey, JSON.stringify(items));
+  }, [items]);
 
   function handleUnlock(event) {
-    event.preventDefault()
+    event.preventDefault();
 
     if (password.trim() !== libraryPassword) {
-      setUnlockError('That password does not match.')
-      return
+      setUnlockError("That password does not match.");
+      return;
     }
 
-    window.localStorage.setItem(accessStorageKey, 'true')
-    setIsUnlocked(true)
-    setUnlockError('')
-    setPassword('')
+    window.localStorage.setItem(accessStorageKey, "true");
+    setIsUnlocked(true);
+    setUnlockError("");
+    setPassword("");
   }
 
   function handleLock() {
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(accessStorageKey)
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(accessStorageKey);
     }
 
-    setIsUnlocked(false)
-    setIsAddOpen(false)
-    setActiveItem(null)
-    setEditingItemId(null)
-    setProtectedAction(null)
-    setActionPasswordInput('')
-    setActionError('')
-    setUnlockError('')
-    setPassword('')
+    setIsUnlocked(false);
+    setIsAddOpen(false);
+    setActiveItem(null);
+    setUnlockError("");
+    setPassword("");
   }
 
   function handleFormChange(event) {
-    const { name, value } = event.target
+    const { name, value } = event.target;
     setForm((current) => ({
       ...current,
       [name]: value,
-    }))
+    }));
   }
 
   function closeAddPanel() {
-    setIsAddOpen(false)
-    setForm(initialAddForm)
-    setEditingItemId(null)
-  }
-
-  function closeProtectedAction() {
-    setProtectedAction(null)
-    setActionPasswordInput('')
-    setActionError('')
+    setIsAddOpen(false);
+    setForm(initialAddForm);
+    setEditingItemId(null);
   }
 
   function handleAddItem(event) {
-    event.preventDefault()
+    event.preventDefault();
 
     const nextItem = {
       id: editingItemId ?? createItemId(),
@@ -210,79 +207,60 @@ function App() {
         items.find((item) => item.id === editingItemId)?.createdAt ??
         new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    }
+    };
 
     setItems((current) => {
       if (editingItemId) {
-        return current.map((item) => (item.id === editingItemId ? nextItem : item))
+        return current.map((item) =>
+          item.id === editingItemId ? nextItem : item,
+        );
       }
 
-      return [nextItem, ...current]
-    })
+      return [nextItem, ...current];
+    });
 
     if (activeItem?.id === nextItem.id) {
-      setActiveItem(nextItem)
+      setActiveItem(nextItem);
     }
 
-    closeAddPanel()
+    closeAddPanel();
   }
 
-  function openProtectedAction(type, item) {
-    setProtectedAction({
-      type,
-      itemId: item.id,
-    })
-    setActionPasswordInput('')
-    setActionError('')
-  }
-
-  function completeEdit(item) {
-    setEditingItemId(item.id)
+  function handleEditItem(item) {
+    setEditingItemId(item.id);
     setForm({
       type: item.type,
       title: item.title,
       author: item.author,
       description: item.description,
       content: item.content,
-    })
-    setIsAddOpen(true)
+    });
+    setIsAddOpen(true);
   }
 
-  function completeDelete(itemId) {
-    setItems((current) => current.filter((item) => item.id !== itemId))
+  function handleDeleteItem(itemId) {
+    const itemToDelete = items.find((item) => item.id === itemId);
+
+    if (!itemToDelete) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete "${itemToDelete.title}" from your library?`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setItems((current) => current.filter((item) => item.id !== itemId));
 
     if (activeItem?.id === itemId) {
-      setActiveItem(null)
+      setActiveItem(null);
     }
   }
 
-  function handleProtectedActionSubmit(event) {
-    event.preventDefault()
-
-    if (actionPasswordInput.trim() !== managementPassword) {
-      setActionError('That management password does not match.')
-      return
-    }
-
-    const targetItem = items.find((item) => item.id === protectedAction?.itemId)
-
-    if (!targetItem || !protectedAction) {
-      closeProtectedAction()
-      return
-    }
-
-    if (protectedAction.type === 'edit') {
-      completeEdit(targetItem)
-    }
-
-    if (protectedAction.type === 'delete') {
-      completeDelete(targetItem.id)
-    }
-
-    closeProtectedAction()
-  }
-
-  const readerBlocks = activeItem ? parseReaderBlocks(activeItem.content) : []
+  const readerBlocks = activeItem ? parseReaderBlocks(activeItem.content) : [];
 
   if (!isUnlocked) {
     return (
@@ -292,8 +270,9 @@ function App() {
             <p className="eyebrow">Private reading room</p>
             <h1>Home Library</h1>
             <p>
-              A warm little library for your own books, articles, and poems. Unlock
-              the shelf once and it will stay open until you choose to lock it again.
+              A warm little library for your own books, articles, and poems.
+              Unlock the shelf once and it will stay open until you choose to
+              lock it again.
             </p>
           </div>
 
@@ -304,8 +283,8 @@ function App() {
                 autoComplete="current-password"
                 name="password"
                 onChange={(event) => {
-                  setPassword(event.target.value)
-                  setUnlockError('')
+                  setPassword(event.target.value);
+                  setUnlockError("");
                 }}
                 placeholder="Enter the library password"
                 type="password"
@@ -313,7 +292,9 @@ function App() {
               />
             </label>
 
-            {unlockError ? <p className="feedback error-text">{unlockError}</p> : null}
+            {unlockError ? (
+              <p className="feedback error-text">{unlockError}</p>
+            ) : null}
 
             <button className="primary-button" type="submit">
               Unlock Library
@@ -321,7 +302,7 @@ function App() {
           </form>
         </section>
       </main>
-    )
+    );
   }
 
   if (activeItem) {
@@ -329,20 +310,24 @@ function App() {
       <main className="app-shell">
         <section className="reader-shell page-fade">
           <div className="reader-toolbar">
-            <button className="back-button" onClick={() => setActiveItem(null)} type="button">
+            <button
+              className="back-button"
+              onClick={() => setActiveItem(null)}
+              type="button"
+            >
               ← Back to Library
             </button>
             <div className="reader-actions">
               <button
                 className="secondary-button"
-                onClick={() => openProtectedAction('edit', activeItem)}
+                onClick={() => handleEditItem(activeItem)}
                 type="button"
               >
                 Edit
               </button>
               <button
                 className="lock-button"
-                onClick={() => openProtectedAction('delete', activeItem)}
+                onClick={() => handleDeleteItem(activeItem.id)}
                 type="button"
               >
                 Delete
@@ -352,7 +337,8 @@ function App() {
 
           <article className={`reader-page reader-${activeItem.type}`}>
             <p className="eyebrow">
-              {sections.find((section) => section.id === activeItem.type)?.title ?? 'Reading'}
+              {sections.find((section) => section.id === activeItem.type)
+                ?.title ?? "Reading"}
             </p>
             <h1 className="reader-title">{activeItem.title}</h1>
             <p className="reader-author">by {activeItem.author}</p>
@@ -362,21 +348,28 @@ function App() {
 
             <div className="reader-content">
               {readerBlocks.map((block, index) =>
-                block.type === 'list' ? (
-                  <ul className="reader-list" key={`${activeItem.id}-list-${index}`}>
+                block.type === "list" ? (
+                  <ul
+                    className="reader-list"
+                    key={`${activeItem.id}-list-${index}`}
+                  >
                     {block.items.map((entry) => (
-                      <li key={`${activeItem.id}-list-item-${index}-${entry}`}>{entry}</li>
+                      <li key={`${activeItem.id}-list-item-${index}-${entry}`}>
+                        {entry}
+                      </li>
                     ))}
                   </ul>
                 ) : (
-                  <p key={`${activeItem.id}-paragraph-${index}`}>{block.text}</p>
+                  <p key={`${activeItem.id}-paragraph-${index}`}>
+                    {block.text}
+                  </p>
                 ),
               )}
             </div>
           </article>
         </section>
       </main>
-    )
+    );
   }
 
   return (
@@ -399,9 +392,9 @@ function App() {
             <button
               className="primary-button add-button"
               onClick={() => {
-                setEditingItemId(null)
-                setForm(initialAddForm)
-                setIsAddOpen(true)
+                setEditingItemId(null);
+                setForm(initialAddForm);
+                setIsAddOpen(true);
               }}
               type="button"
             >
@@ -411,7 +404,7 @@ function App() {
         </header>
 
         {sections.map((section) => {
-          const sectionItems = items.filter((item) => item.type === section.id)
+          const sectionItems = items.filter((item) => item.type === section.id);
 
           return (
             <section
@@ -420,7 +413,9 @@ function App() {
             >
               <div className="section-heading">
                 <div>
-                  <h2>{section.icon} {section.title}</h2>
+                  <h2>
+                    {section.icon} {section.title}
+                  </h2>
                   <p>{section.description}</p>
                 </div>
                 <span className="count-pill">{sectionItems.length}</span>
@@ -429,8 +424,13 @@ function App() {
               {sectionItems.length ? (
                 <div className="card-grid">
                   {sectionItems.map((item) => (
-                    <article className={`library-card card-${section.id}`} key={item.id}>
-                      <span className="card-label">{section.singularLabel}</span>
+                    <article
+                      className={`library-card card-${section.id}`}
+                      key={item.id}
+                    >
+                      <span className="card-label">
+                        {section.singularLabel}
+                      </span>
                       <h3>{item.title}</h3>
                       <p className="card-author">{item.author}</p>
                       <p className="card-description">{item.description}</p>
@@ -444,14 +444,14 @@ function App() {
                         </button>
                         <button
                           className="card-action"
-                          onClick={() => openProtectedAction('edit', item)}
+                          onClick={() => handleEditItem(item)}
                           type="button"
                         >
                           Edit
                         </button>
                         <button
                           className="card-action card-action-delete"
-                          onClick={() => openProtectedAction('delete', item)}
+                          onClick={() => handleDeleteItem(item.id)}
                           type="button"
                         >
                           Delete
@@ -467,7 +467,7 @@ function App() {
                 </div>
               )}
             </section>
-          )
+          );
         })}
       </section>
 
@@ -483,10 +483,16 @@ function App() {
               <div>
                 <p className="eyebrow">Add content</p>
                 <h2 id="add-content-title">
-                  {editingItemId ? 'Update your shelf item' : 'Place something new on the shelf'}
+                  {editingItemId
+                    ? "Update your shelf item"
+                    : "Place something new on the shelf"}
                 </h2>
               </div>
-              <button className="close-button" onClick={closeAddPanel} type="button">
+              <button
+                className="close-button"
+                onClick={closeAddPanel}
+                type="button"
+              >
                 Close
               </button>
             </div>
@@ -494,7 +500,11 @@ function App() {
             <form className="add-form" onSubmit={handleAddItem}>
               <label className="field">
                 <span>Section</span>
-                <select name="type" onChange={handleFormChange} value={form.type}>
+                <select
+                  name="type"
+                  onChange={handleFormChange}
+                  value={form.type}
+                >
                   <option value="book">Book</option>
                   <option value="article">Article</option>
                   <option value="poetry">Poetry</option>
@@ -548,65 +558,15 @@ function App() {
               </label>
 
               <div className="form-actions">
-                <button className="secondary-button" onClick={closeAddPanel} type="button">
-                  Cancel
-                </button>
-                <button className="primary-button" type="submit">
-                  {editingItemId ? 'Update' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </section>
-        </div>
-      ) : null}
-
-      {protectedAction ? (
-        <div className="modal-backdrop" role="presentation">
-          <section
-            aria-labelledby="management-password-title"
-            aria-modal="true"
-            className="auth-panel page-fade"
-            role="dialog"
-          >
-            <div className="panel-header">
-              <div>
-                <p className="eyebrow">Protected action</p>
-                <h2 id="management-password-title">
-                  {protectedAction.type === 'edit' ? 'Enter password to update' : 'Enter password to delete'}
-                </h2>
-              </div>
-              <button className="close-button" onClick={closeProtectedAction} type="button">
-                Close
-              </button>
-            </div>
-
-            <form className="auth-form" onSubmit={handleProtectedActionSubmit}>
-              <label className="field">
-                <span>Management Password</span>
-                <input
-                  autoComplete="current-password"
-                  onChange={(event) => {
-                    setActionPasswordInput(event.target.value)
-                    setActionError('')
-                  }}
-                  placeholder="Enter the update/delete password"
-                  type="password"
-                  value={actionPasswordInput}
-                />
-              </label>
-
-              {actionError ? <p className="feedback error-text">{actionError}</p> : null}
-
-              <div className="form-actions">
                 <button
                   className="secondary-button"
-                  onClick={closeProtectedAction}
+                  onClick={closeAddPanel}
                   type="button"
                 >
                   Cancel
                 </button>
                 <button className="primary-button" type="submit">
-                  Continue
+                  {editingItemId ? "Update" : "Save"}
                 </button>
               </div>
             </form>
@@ -614,7 +574,7 @@ function App() {
         </div>
       ) : null}
     </main>
-  )
+  );
 }
 
-export default App
+export default App;
