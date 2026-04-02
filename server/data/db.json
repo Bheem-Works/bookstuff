@@ -109,6 +109,27 @@
       "contentType": "article",
       "contentId": "article-author-following",
       "accessedAt": "2026-04-01T12:23:14.257Z"
+    },
+    {
+      "id": "1521b06e-6906-4358-9bb7-df4d86e6580f",
+      "userId": "f0d47129-c315-48d8-86c3-699e6de9b0ef",
+      "contentType": "book",
+      "contentId": "book-atomic-habits",
+      "accessedAt": "2026-04-01T12:29:33.906Z"
+    },
+    {
+      "id": "1edec683-8645-48b7-b616-51fa3e9a443e",
+      "userId": "f0d47129-c315-48d8-86c3-699e6de9b0ef",
+      "contentType": "book",
+      "contentId": "book-deep-work",
+      "accessedAt": "2026-04-01T12:29:35.721Z"
+    },
+    {
+      "id": "236811d2-1a54-448a-b066-e97799534177",
+      "userId": "f0d47129-c315-48d8-86c3-699e6de9b0ef",
+      "contentType": "book",
+      "contentId": "book-midnight-library",
+      "accessedAt": "2026-04-01T12:29:38.479Z"
     }
   ]
 }
