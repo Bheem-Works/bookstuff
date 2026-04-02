@@ -1,76 +1,182 @@
 import { useEffect, useState } from 'react'
 
 import './index.css'
-import {
-  getArticles,
-  getBooks,
-  getContent,
-  getHistory,
-  getProfile,
-  login,
-  signup,
-} from './api'
 
-const tokenStorageKey = 'book-stuff-token'
+const accessStorageKey = 'miso-home-library-unlocked'
+const libraryStorageKey = 'miso-home-library-items'
+const libraryPassword = 'misoloveeggs'
+const managementPassword = 'bhimmagar9810'
 
-const initialForm = {
-  username: '',
-  email: '',
-  identifier: '',
-  password: '',
+const sections = [
+  {
+    id: 'book',
+    icon: '📚',
+    title: 'Books',
+    singularLabel: 'Book',
+    description: 'Stories, journals, and beloved reads kept close to the shelf.',
+    emptyTitle: 'No books yet',
+    emptyText: 'Add your first book with the + Add button.',
+  },
+  {
+    id: 'article',
+    icon: '📰',
+    title: 'Articles',
+    singularLabel: 'Article',
+    description: 'Thoughtful notes, essays, and reflections worth returning to.',
+    emptyTitle: 'No articles yet',
+    emptyText: 'Add your first article with the + Add button.',
+  },
+  {
+    id: 'poetry',
+    icon: '🌸',
+    title: 'Poetry',
+    singularLabel: 'Poetry',
+    description: 'Soft lines, verses, and small pieces that deserve quiet space.',
+    emptyTitle: 'No poetry yet',
+    emptyText: 'Add your first poem with the + Add button.',
+  },
+]
+
+const initialAddForm = {
+  type: 'book',
+  title: '',
+  author: '',
+  description: '',
+  content: '',
+}
+
+function readStoredItems() {
+  if (typeof window === 'undefined') {
+    return []
+  }
+
+  try {
+    const storedItems = window.localStorage.getItem(libraryStorageKey)
+    const parsedItems = storedItems ? JSON.parse(storedItems) : []
+    return Array.isArray(parsedItems) ? parsedItems : []
+  } catch {
+    return []
+  }
+}
+
+function createItemId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `item-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function parseReaderBlocks(content = '') {
+  return content
+    .replace(/\r\n/g, '\n')
+    .trim()
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .flatMap((block) => {
+      const lines = block
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+
+      const bulletLines = lines.filter((line) => /^[-*•]\s+/.test(line))
+      const firstBulletIndex = lines.findIndex((line) => /^[-*•]\s+/.test(line))
+
+      if (bulletLines.length === lines.length) {
+        return [
+          {
+            type: 'list',
+            items: bulletLines.map((line) => line.replace(/^[-*•]\s+/, '').trim()),
+          },
+        ]
+      }
+
+      if (
+        firstBulletIndex > 0 &&
+        lines.slice(firstBulletIndex).every((line) => /^[-*•]\s+/.test(line))
+      ) {
+        return [
+          {
+            type: 'paragraph',
+            text: lines.slice(0, firstBulletIndex).join(' '),
+          },
+          {
+            type: 'list',
+            items: lines
+              .slice(firstBulletIndex)
+              .map((line) => line.replace(/^[-*•]\s+/, '').trim()),
+          },
+        ]
+      }
+
+      return [
+        {
+          type: 'paragraph',
+          text: lines.join(' '),
+        },
+      ]
+    })
 }
 
 function App() {
-  const [authMode, setAuthMode] = useState('login')
-  const [form, setForm] = useState(initialForm)
-  const [token, setToken] = useState(() => localStorage.getItem(tokenStorageKey) ?? '')
-  const [user, setUser] = useState(null)
-  const [books, setBooks] = useState([])
-  const [articles, setArticles] = useState([])
-  const [history, setHistory] = useState([])
-  const [activeSection, setActiveSection] = useState('books')
+  const [isUnlocked, setIsUnlocked] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.localStorage.getItem(accessStorageKey) === 'true'
+  })
+  const [password, setPassword] = useState('')
+  const [unlockError, setUnlockError] = useState('')
+  const [items, setItems] = useState(() => readStoredItems())
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [form, setForm] = useState(initialAddForm)
   const [activeItem, setActiveItem] = useState(null)
-  const [isBooting, setIsBooting] = useState(Boolean(localStorage.getItem(tokenStorageKey)))
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isReading, setIsReading] = useState(false)
-  const [error, setError] = useState('')
-  const [statusMessage, setStatusMessage] = useState('')
+  const [editingItemId, setEditingItemId] = useState(null)
+  const [protectedAction, setProtectedAction] = useState(null)
+  const [actionPasswordInput, setActionPasswordInput] = useState('')
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
-    if (!token) {
-      setIsBooting(false)
+    if (typeof window === 'undefined') {
       return
     }
 
-    bootstrapAuthenticatedState(token)
-  }, [token])
+    window.localStorage.setItem(libraryStorageKey, JSON.stringify(items))
+  }, [items])
 
-  async function bootstrapAuthenticatedState(sessionToken) {
-    setIsBooting(true)
-    setError('')
+  function handleUnlock(event) {
+    event.preventDefault()
 
-    try {
-      const [profileResponse, booksResponse, articlesResponse, historyResponse] =
-        await Promise.all([
-          getProfile(sessionToken),
-          getBooks(sessionToken),
-          getArticles(sessionToken),
-          getHistory(sessionToken),
-        ])
-
-      setUser(profileResponse.user)
-      setBooks(booksResponse.items)
-      setArticles(articlesResponse.items)
-      setHistory(historyResponse.items)
-    } catch (requestError) {
-      clearSession()
-      setError(requestError.message)
-    } finally {
-      setIsBooting(false)
+    if (password.trim() !== libraryPassword) {
+      setUnlockError('That password does not match.')
+      return
     }
+
+    window.localStorage.setItem(accessStorageKey, 'true')
+    setIsUnlocked(true)
+    setUnlockError('')
+    setPassword('')
   }
 
-  function updateFormField(event) {
+  function handleLock() {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(accessStorageKey)
+    }
+
+    setIsUnlocked(false)
+    setIsAddOpen(false)
+    setActiveItem(null)
+    setEditingItemId(null)
+    setProtectedAction(null)
+    setActionPasswordInput('')
+    setActionError('')
+    setUnlockError('')
+    setPassword('')
+  }
+
+  function handleFormChange(event) {
     const { name, value } = event.target
     setForm((current) => ({
       ...current,
@@ -78,368 +184,435 @@ function App() {
     }))
   }
 
-  async function handleAuthSubmit(event) {
+  function closeAddPanel() {
+    setIsAddOpen(false)
+    setForm(initialAddForm)
+    setEditingItemId(null)
+  }
+
+  function closeProtectedAction() {
+    setProtectedAction(null)
+    setActionPasswordInput('')
+    setActionError('')
+  }
+
+  function handleAddItem(event) {
     event.preventDefault()
-    setIsSubmitting(true)
-    setError('')
-    setStatusMessage('')
 
-    try {
-      const response =
-        authMode === 'signup'
-          ? await signup({
-              username: form.username,
-              email: form.email,
-              password: form.password,
-            })
-          : await login({
-              identifier: form.identifier,
-              password: form.password,
-            })
+    const nextItem = {
+      id: editingItemId ?? createItemId(),
+      type: form.type,
+      title: form.title.trim(),
+      author: form.author.trim(),
+      description: form.description.trim(),
+      content: form.content.trim(),
+      createdAt:
+        items.find((item) => item.id === editingItemId)?.createdAt ??
+        new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }
 
-      persistSession(response.token, response.user)
-      setForm(initialForm)
-      setStatusMessage(
-        authMode === 'signup'
-          ? 'Your account is ready. Explore books and articles below.'
-          : 'Welcome back. Your content is unlocked.',
-      )
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setIsSubmitting(false)
+    setItems((current) => {
+      if (editingItemId) {
+        return current.map((item) => (item.id === editingItemId ? nextItem : item))
+      }
+
+      return [nextItem, ...current]
+    })
+
+    if (activeItem?.id === nextItem.id) {
+      setActiveItem(nextItem)
+    }
+
+    closeAddPanel()
+  }
+
+  function openProtectedAction(type, item) {
+    setProtectedAction({
+      type,
+      itemId: item.id,
+    })
+    setActionPasswordInput('')
+    setActionError('')
+  }
+
+  function completeEdit(item) {
+    setEditingItemId(item.id)
+    setForm({
+      type: item.type,
+      title: item.title,
+      author: item.author,
+      description: item.description,
+      content: item.content,
+    })
+    setIsAddOpen(true)
+  }
+
+  function completeDelete(itemId) {
+    setItems((current) => current.filter((item) => item.id !== itemId))
+
+    if (activeItem?.id === itemId) {
+      setActiveItem(null)
     }
   }
 
-  function persistSession(nextToken, nextUser) {
-    localStorage.setItem(tokenStorageKey, nextToken)
-    setToken(nextToken)
-    setUser(nextUser)
-  }
+  function handleProtectedActionSubmit(event) {
+    event.preventDefault()
 
-  function clearSession() {
-    localStorage.removeItem(tokenStorageKey)
-    setToken('')
-    setUser(null)
-    setBooks([])
-    setArticles([])
-    setHistory([])
-    setActiveItem(null)
-    setForm(initialForm)
-    setStatusMessage('')
-  }
-
-  async function handleRead(type, id) {
-    if (!token) {
-      setError('Please log in to access books and articles.')
+    if (actionPasswordInput.trim() !== managementPassword) {
+      setActionError('That management password does not match.')
       return
     }
 
-    setIsReading(true)
-    setError('')
+    const targetItem = items.find((item) => item.id === protectedAction?.itemId)
 
-    try {
-      const response = await getContent(token, type, id)
-      setActiveItem({
-        type,
-        ...response.item,
-      })
-
-      // Refresh profile-linked history after each protected read.
-      const historyResponse = await getHistory(token)
-      setHistory(historyResponse.items)
-    } catch (requestError) {
-      setError(requestError.message)
-    } finally {
-      setIsReading(false)
+    if (!targetItem || !protectedAction) {
+      closeProtectedAction()
+      return
     }
+
+    if (protectedAction.type === 'edit') {
+      completeEdit(targetItem)
+    }
+
+    if (protectedAction.type === 'delete') {
+      completeDelete(targetItem.id)
+    }
+
+    closeProtectedAction()
   }
 
-  const activeCollection = activeSection === 'books' ? books : articles
+  const readerBlocks = activeItem ? parseReaderBlocks(activeItem.content) : []
 
-  return (
-    <main className="app-shell">
-      <header className="top-nav-wrap">
-        <nav className="top-nav" aria-label="Primary navigation">
-          <a className="brand" href="/">
-            <span className="brand-mark">BS</span>
-            <span className="brand-text">book stuff</span>
-          </a>
-
-          <div className="nav-links">
-            <button
-              className={`nav-link ${activeSection === 'books' ? 'is-active' : ''}`}
-              onClick={() => setActiveSection('books')}
-              type="button"
-            >
-              Books
-            </button>
-            <button
-              className={`nav-link ${activeSection === 'articles' ? 'is-active' : ''}`}
-              onClick={() => setActiveSection('articles')}
-              type="button"
-            >
-              Articles
-            </button>
-          </div>
-
-          <div className="nav-auth">
-            {user ? (
-              <>
-                <div className="profile-chip" title={`${user.username} (${user.id})`}>
-                  <span className="profile-avatar" aria-hidden="true">
-                    {user.avatarLabel}
-                  </span>
-                  <div className="profile-copy">
-                    <strong>{user.username}</strong>
-                    <span>{user.id.slice(0, 8)}</span>
-                  </div>
-                </div>
-                <button className="nav-ghost" onClick={clearSession} type="button">
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  className={`nav-ghost ${authMode === 'login' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setAuthMode('login')
-                    setForm(initialForm)
-                    setError('')
-                    setStatusMessage('')
-                  }}
-                  type="button"
-                >
-                  Login
-                </button>
-                <button
-                  className={`nav-cta ${authMode === 'signup' ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setAuthMode('signup')
-                    setForm(initialForm)
-                    setError('')
-                    setStatusMessage('')
-                  }}
-                  type="button"
-                >
-                  Sign Up
-                </button>
-              </>
-            )}
-          </div>
-        </nav>
-      </header>
-
-      <section className="hero-panel">
-        <div className="hero-copy">
-          <p className="eyebrow">Protected library experience</p>
-          <h1>Read books and articles through your own account.</h1>
-          <p className="description">
-            Secure sign up, login, protected content access, and a personal reading
-            history all live together in one responsive interface.
-          </p>
-
-          <div className="hero-highlights" aria-label="Platform highlights">
-            <span className="highlight-pill">Soft gradient UI</span>
-            <span className="highlight-pill">Protected reading</span>
-            <span className="highlight-pill">Personal history</span>
-          </div>
-
-          {user ? (
-            <div className="user-meta-card">
-              <h2>Welcome, {user.username}</h2>
-              <p>Email: {user.email}</p>
-              <p>User ID: {user.id}</p>
-            </div>
-          ) : (
-            <form className="auth-card" onSubmit={handleAuthSubmit}>
-              <div className="auth-header">
-                <h2>{authMode === 'signup' ? 'Create account' : 'Login to continue'}</h2>
-                <p>
-                  {authMode === 'signup'
-                    ? 'Create a secure account to unlock the library.'
-                    : 'Use your email or username to access protected content.'}
-                </p>
-              </div>
-
-              {authMode === 'signup' ? (
-                <label className="field">
-                  <span>Username</span>
-                  <input
-                    name="username"
-                    onChange={updateFormField}
-                    placeholder="readername"
-                    required
-                    value={form.username}
-                  />
-                </label>
-              ) : null}
-
-              <label className="field">
-                <span>{authMode === 'signup' ? 'Email' : 'Email or username'}</span>
-                <input
-                  name={authMode === 'signup' ? 'email' : 'identifier'}
-                  onChange={updateFormField}
-                  placeholder={
-                    authMode === 'signup'
-                      ? 'reader@example.com'
-                      : 'reader@example.com or readername'
-                  }
-                  required
-                  type={authMode === 'signup' ? 'email' : 'text'}
-                  value={authMode === 'signup' ? form.email : form.identifier}
-                />
-              </label>
-
-              <label className="field">
-                <span>Password</span>
-                <input
-                  name="password"
-                  onChange={updateFormField}
-                  placeholder="Minimum 6 characters"
-                  required
-                  type="password"
-                  value={form.password}
-                />
-              </label>
-
-              <button className="auth-submit" disabled={isSubmitting} type="submit">
-                {isSubmitting
-                  ? 'Please wait...'
-                  : authMode === 'signup'
-                    ? 'Create account'
-                    : 'Login'}
-              </button>
-            </form>
-          )}
-
-          {error ? <p className="feedback error-text">{error}</p> : null}
-          {statusMessage ? <p className="feedback success-text">{statusMessage}</p> : null}
-        </div>
-
-        <aside className="dashboard-panel">
-          <div className="dashboard-header">
-            <h2>{user ? 'Reading dashboard' : 'Why sign in?'}</h2>
+  if (!isUnlocked) {
+    return (
+      <main className="app-shell">
+        <section className="password-gate page-fade">
+          <div className="gate-copy">
+            <p className="eyebrow">Private reading room</p>
+            <h1>Home Library</h1>
             <p>
-              {user
-                ? 'Your latest reading activity appears here.'
-                : 'Authentication unlocks protected books, articles, and your personal history.'}
+              A warm little library for your own books, articles, and poems. Unlock
+              the shelf once and it will stay open until you choose to lock it again.
             </p>
           </div>
 
-          {user ? (
-            <div className="history-list">
-              {history.length ? (
-                history.slice(0, 6).map((entry) => (
-                  <article className="history-card" key={entry.id}>
-                    <span className="history-badge">{entry.contentType}</span>
-                    <h3>{entry.contentTitle}</h3>
-                    <p>{entry.contentAuthor}</p>
-                    <time>{new Date(entry.accessedAt).toLocaleString()}</time>
-                  </article>
-                ))
-              ) : (
-                <div className="empty-state">
-                  <h3>No history yet</h3>
-                  <p>Open a book or article to start building your reading trail.</p>
-                </div>
+          <form className="gate-card" onSubmit={handleUnlock}>
+            <label className="field">
+              <span>Password</span>
+              <input
+                autoComplete="current-password"
+                name="password"
+                onChange={(event) => {
+                  setPassword(event.target.value)
+                  setUnlockError('')
+                }}
+                placeholder="Enter the library password"
+                type="password"
+                value={password}
+              />
+            </label>
+
+            {unlockError ? <p className="feedback error-text">{unlockError}</p> : null}
+
+            <button className="primary-button" type="submit">
+              Unlock Library
+            </button>
+          </form>
+        </section>
+      </main>
+    )
+  }
+
+  if (activeItem) {
+    return (
+      <main className="app-shell">
+        <section className="reader-shell page-fade">
+          <div className="reader-toolbar">
+            <button className="back-button" onClick={() => setActiveItem(null)} type="button">
+              ← Back to Library
+            </button>
+            <div className="reader-actions">
+              <button
+                className="secondary-button"
+                onClick={() => openProtectedAction('edit', activeItem)}
+                type="button"
+              >
+                Edit
+              </button>
+              <button
+                className="lock-button"
+                onClick={() => openProtectedAction('delete', activeItem)}
+                type="button"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+
+          <article className={`reader-page reader-${activeItem.type}`}>
+            <p className="eyebrow">
+              {sections.find((section) => section.id === activeItem.type)?.title ?? 'Reading'}
+            </p>
+            <h1 className="reader-title">{activeItem.title}</h1>
+            <p className="reader-author">by {activeItem.author}</p>
+            {activeItem.description ? (
+              <p className="reader-description">{activeItem.description}</p>
+            ) : null}
+
+            <div className="reader-content">
+              {readerBlocks.map((block, index) =>
+                block.type === 'list' ? (
+                  <ul className="reader-list" key={`${activeItem.id}-list-${index}`}>
+                    {block.items.map((entry) => (
+                      <li key={`${activeItem.id}-list-item-${index}-${entry}`}>{entry}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p key={`${activeItem.id}-paragraph-${index}`}>{block.text}</p>
+                ),
               )}
             </div>
-          ) : (
-            <div className="guest-points">
-              <div className="guest-point">
-                <strong>Secure access</strong>
-                <span>Passwords are hashed and sessions are token-based.</span>
-              </div>
-              <div className="guest-point">
-                <strong>User profile</strong>
-                <span>Your account keeps a unique ID and visible profile details.</span>
-              </div>
-              <div className="guest-point">
-                <strong>Reading history</strong>
-                <span>Every book and article read is saved back to your account.</span>
-              </div>
-            </div>
-          )}
-        </aside>
-      </section>
+          </article>
+        </section>
+      </main>
+    )
+  }
 
-      <section className="content-layout">
-        <div className="catalog-panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow section-tag">
-                {activeSection === 'books' ? 'Books collection' : 'Articles collection'}
-              </p>
-              <h2>{activeSection === 'books' ? 'Protected books' : 'Protected articles'}</h2>
-            </div>
-            <span className="count-pill">{activeCollection.length} items</span>
+  return (
+    <main className="app-shell">
+      <section className="library-shell page-fade">
+        <header className="library-hero">
+          <div>
+            <p className="eyebrow">Private reading room</p>
+            <h1>Home Library</h1>
+            <p className="hero-text">
+              Your books, articles, and poems live here in one calm, uncluttered
+              space. Everything is manually added and stored in your browser.
+            </p>
           </div>
 
-          {!user ? (
-            <div className="locked-card">
-              <h3>Login required</h3>
-              <p>
-                Only authenticated users can access books and articles. Sign up or log
-                in to continue.
-              </p>
-            </div>
-          ) : isBooting ? (
-            <div className="locked-card">
-              <h3>Loading your library</h3>
-              <p>Fetching books, articles, and history for your account.</p>
-            </div>
-          ) : (
-            <div className="content-grid">
-              {activeCollection.map((item) => (
-                <article className="content-card" key={item.id}>
-                  <span className="content-type">
-                    {activeSection === 'books' ? item.genre : item.topic}
-                  </span>
-                  <h3>{item.title}</h3>
-                  <p className="content-author">{item.author}</p>
-                  <p>{item.description ?? item.summary}</p>
-                  <button
-                    className="read-button"
-                    onClick={() => handleRead(activeSection === 'books' ? 'book' : 'article', item.id)}
-                    type="button"
-                  >
-                    Read now
-                  </button>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="reader-panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow section-tag">Reader</p>
-              <h2>Current content</h2>
-            </div>
+          <div className="hero-actions">
+            <button className="lock-button" onClick={handleLock} type="button">
+              Lock
+            </button>
+            <button
+              className="primary-button add-button"
+              onClick={() => {
+                setEditingItemId(null)
+                setForm(initialAddForm)
+                setIsAddOpen(true)
+              }}
+              type="button"
+            >
+              + Add
+            </button>
           </div>
+        </header>
 
-          {activeItem ? (
-            <article className="reader-card">
-              <span className="history-badge">{activeItem.type}</span>
-              <h3>{activeItem.title}</h3>
-              <p className="content-author">{activeItem.author}</p>
-              <p className="reader-body">{activeItem.content}</p>
-            </article>
-          ) : (
-            <div className="empty-state reader-empty">
-              <h3>{isReading ? 'Opening content...' : 'Nothing open yet'}</h3>
-              <p>
-                {user
-                  ? 'Choose a book or article to read. Each access is saved to your history.'
-                  : 'Your reader will appear here after login and content selection.'}
-              </p>
-            </div>
-          )}
-        </div>
+        {sections.map((section) => {
+          const sectionItems = items.filter((item) => item.type === section.id)
+
+          return (
+            <section
+              className={`library-section section-${section.id}`}
+              key={section.id}
+            >
+              <div className="section-heading">
+                <div>
+                  <h2>{section.icon} {section.title}</h2>
+                  <p>{section.description}</p>
+                </div>
+                <span className="count-pill">{sectionItems.length}</span>
+              </div>
+
+              {sectionItems.length ? (
+                <div className="card-grid">
+                  {sectionItems.map((item) => (
+                    <article className={`library-card card-${section.id}`} key={item.id}>
+                      <span className="card-label">{section.singularLabel}</span>
+                      <h3>{item.title}</h3>
+                      <p className="card-author">{item.author}</p>
+                      <p className="card-description">{item.description}</p>
+                      <div className="card-actions">
+                        <button
+                          className="card-action card-action-open"
+                          onClick={() => setActiveItem(item)}
+                          type="button"
+                        >
+                          Open
+                        </button>
+                        <button
+                          className="card-action"
+                          onClick={() => openProtectedAction('edit', item)}
+                          type="button"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className="card-action card-action-delete"
+                          onClick={() => openProtectedAction('delete', item)}
+                          type="button"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-card">
+                  <h3>{section.emptyTitle}</h3>
+                  <p>{section.emptyText}</p>
+                </div>
+              )}
+            </section>
+          )
+        })}
       </section>
+
+      {isAddOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="add-content-title"
+            aria-modal="true"
+            className="add-panel page-fade"
+            role="dialog"
+          >
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Add content</p>
+                <h2 id="add-content-title">
+                  {editingItemId ? 'Update your shelf item' : 'Place something new on the shelf'}
+                </h2>
+              </div>
+              <button className="close-button" onClick={closeAddPanel} type="button">
+                Close
+              </button>
+            </div>
+
+            <form className="add-form" onSubmit={handleAddItem}>
+              <label className="field">
+                <span>Section</span>
+                <select name="type" onChange={handleFormChange} value={form.type}>
+                  <option value="book">Book</option>
+                  <option value="article">Article</option>
+                  <option value="poetry">Poetry</option>
+                </select>
+              </label>
+
+              <label className="field">
+                <span>Title</span>
+                <input
+                  name="title"
+                  onChange={handleFormChange}
+                  placeholder="Give it a title"
+                  required
+                  value={form.title}
+                />
+              </label>
+
+              <label className="field">
+                <span>Author</span>
+                <input
+                  name="author"
+                  onChange={handleFormChange}
+                  placeholder="Who wrote it?"
+                  required
+                  value={form.author}
+                />
+              </label>
+
+              <label className="field">
+                <span>Short Description</span>
+                <textarea
+                  name="description"
+                  onChange={handleFormChange}
+                  placeholder="A short note for the card"
+                  required
+                  rows="3"
+                  value={form.description}
+                />
+              </label>
+
+              <label className="field">
+                <span>Content</span>
+                <textarea
+                  name="content"
+                  onChange={handleFormChange}
+                  placeholder="Paste or write the full text here"
+                  required
+                  rows="10"
+                  value={form.content}
+                />
+              </label>
+
+              <div className="form-actions">
+                <button className="secondary-button" onClick={closeAddPanel} type="button">
+                  Cancel
+                </button>
+                <button className="primary-button" type="submit">
+                  {editingItemId ? 'Update' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
+
+      {protectedAction ? (
+        <div className="modal-backdrop" role="presentation">
+          <section
+            aria-labelledby="management-password-title"
+            aria-modal="true"
+            className="auth-panel page-fade"
+            role="dialog"
+          >
+            <div className="panel-header">
+              <div>
+                <p className="eyebrow">Protected action</p>
+                <h2 id="management-password-title">
+                  {protectedAction.type === 'edit' ? 'Enter password to update' : 'Enter password to delete'}
+                </h2>
+              </div>
+              <button className="close-button" onClick={closeProtectedAction} type="button">
+                Close
+              </button>
+            </div>
+
+            <form className="auth-form" onSubmit={handleProtectedActionSubmit}>
+              <label className="field">
+                <span>Management Password</span>
+                <input
+                  autoComplete="current-password"
+                  onChange={(event) => {
+                    setActionPasswordInput(event.target.value)
+                    setActionError('')
+                  }}
+                  placeholder="Enter the update/delete password"
+                  type="password"
+                  value={actionPasswordInput}
+                />
+              </label>
+
+              {actionError ? <p className="feedback error-text">{actionError}</p> : null}
+
+              <div className="form-actions">
+                <button
+                  className="secondary-button"
+                  onClick={closeProtectedAction}
+                  type="button"
+                >
+                  Cancel
+                </button>
+                <button className="primary-button" type="submit">
+                  Continue
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

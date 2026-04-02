@@ -1,94 +1,70 @@
-# Book Stuff
+# Home Library
 
-Book Stuff is a small full-stack reading app with:
+Home Library is a warm, cozy personal reading web app built with React and Vite. It opens behind a simple password gate and gives you three clean shelves for manually added books, articles, and poetry. Everything is stored locally in the browser, so the library feels private, lightweight, and easy to return to.
 
-- secure sign up and login
-- hashed passwords with `bcryptjs`
-- JWT-based authenticated sessions
-- protected Books and Articles sections
-- per-user reading history
-- responsive React frontend and Express backend
+## Features List
 
-## Stack
+- Simple password gate with the password `misoloveeggs`
+- Unlock state remembered in `localStorage`
+- Subtle `Lock` button to re-lock the library at any time
+- Separate management password `bhimmagar9810` required for edit and delete actions
+- Three content sections: Books, Articles, and Poetry
+- Clean content cards with title, author, and short description
+- Manual add flow for books, articles, and poems
+- Edit and delete flow for every saved library item
+- Full reader page with centered layout and `← Back to Library`
+- `localStorage` persistence for all manually added content
+- Fully responsive layout for mobile, tablet, and desktop
+- Warm earthy palette with softer hover states and page transitions
 
-- Frontend: React + Vite
-- Backend: Node.js + Express
-- Auth: JWT + bcrypt password hashing
-- Data store: embedded JSON database in `server/data/db.json`
+## Color Theme Reference
 
-## Project Structure
+- Background: `#FAF6F1`
+- Primary Text: `#2C2C2C`
+- Headings: `#3B2F2F`
+- Accent / Buttons: `#A0522D`
+- Cards: `#FFFFFF`
+- Card Border: `#E8DDD4`
+- Poetry Section Accent: `#7B6D8D`
+- Hover Highlight: `#F0E6DA`
 
-- `src/`: React UI
-- `server/index.mjs`: Express API and auth routes
-- `server/db.mjs`: embedded datastore helpers
-- `server/data/db.json`: users, books, articles, and history records
+## Changelog / Life Process
 
-## Setup
+### Built First
 
-1. Install dependencies:
+- The project originally started as a fuller reading app structure with protected content flows and a more complex account-based approach.
 
-```bash
-npm install
-```
+### Changed Next
 
-2. Start frontend and backend together:
+- The app was simplified into a local-first home library so it matched a quieter, more personal use case.
+- Login and signup were removed in favor of a single password gate because the goal shifted from account management to a private bookshelf experience.
+- The home page was rebuilt around manually added content only, so the interface no longer depends on pre-filled items.
+- A reader page replaced the old in-place reading panel to create a calmer and more focused reading experience.
 
-```bash
-npm run dev
-```
+### Improved Over Time
 
-3. Open the app in your browser:
+- The warm visual design was refined around a soft earthy palette and paper-like cards.
+- Hover and transition animations were softened so movement feels elegant instead of busy.
+- A third Poetry section was added to give short-form writing its own shelf and accent color.
+- A `Lock` button was added so the remembered password gate can still be closed on demand.
+- Editing and deleting were added so saved items can be maintained instead of only accumulated.
+- The layout was made more responsive so the app reads well across desktop, tablet, and mobile screens.
+- The README was rewritten so the project documentation reflects the current app instead of the earlier backend-auth version.
 
-```text
-http://localhost:5173
-```
+## How to Use
 
-The API runs on `http://localhost:4000`, and Vite proxies `/api` requests automatically in development.
+1. Install dependencies with `npm install`.
+2. Start the app with `npm run dev`.
+3. Open the local Vite URL in your browser.
+4. Enter the password `misoloveeggs`.
+5. Use `+ Add` to create a Book, Article, or Poetry entry.
+6. Click any card to open it in the reader page.
+7. Use `Edit` or `Delete` on cards or inside the reader page, then enter `bhimmagar9810` when prompted.
+8. Use `Lock` whenever you want to close the library again.
 
-## Available Scripts
+## Known Limitations
 
-- `npm run dev`: run client and server together
-- `npm run client`: run the Vite frontend only
-- `npm run server`: run the Express API only
-- `npm run build`: build the frontend for production
-
-## Auth and Data Notes
-
-- Passwords are never stored in plain text.
-- JWT tokens are returned by the server and stored in browser `localStorage`.
-- Protected routes require a `Bearer` token.
-- Each user gets a unique `id`.
-- Reading history stores `userId`, `contentType`, `contentId`, and `accessedAt`.
-
-## UI and UX Improvements
-
-- The interface now uses a soft light-gradient background with layered pastel blue and lavender tones for a cleaner and more modern look.
-- Typography was updated to a modern sans-serif stack with improved spacing, clearer heading hierarchy, and better readability across desktop and mobile screens.
-- Navigation buttons now include a clear active state with highlight styling and an animated underline so users can immediately see whether they are browsing Books, Articles, or the active auth mode.
-- Buttons, cards, profile chips, and reader panels use softer shadows, rounded corners, and smoother hover transitions to create a more polished experience.
-- Logged-in and logged-out states were visually refined so the profile icon, logout button, login button, and sign-up button feel consistent and easy to scan.
-- Overall spacing, padding, and responsive behavior were tightened to make the layout feel less cluttered and more professional on both small and large screens.
-
-## Main API Routes
-
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `GET /api/books`
-- `GET /api/articles`
-- `GET /api/content/:type/:id`
-- `GET /api/history`
-
-## Environment Notes
-
-Optional environment variables:
-
-- `PORT`: API port, default `4000`
-- `CLIENT_ORIGIN`: allowed frontend origin, default `http://localhost:5173`
-- `JWT_SECRET`: secret used to sign tokens
-
-Example:
-
-```bash
-JWT_SECRET=change-me npm run server
-```
+- Content is stored only in browser `localStorage`, so it will not sync across browsers or devices.
+- The password gate is intentionally simple and is not secure authentication.
+- Older backend files still exist in the repository, but the current UI works locally in the frontend and does not depend on them.
+- The unlock password and management password are hardcoded for this personal-use experience.

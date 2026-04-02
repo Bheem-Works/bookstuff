@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken'
 import { randomUUID } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 
+import { readFileArticles } from './article-files.mjs'
 import { readDb, updateDb } from './db.mjs'
 
 export const app = express()
@@ -93,8 +94,15 @@ function validateLoginCredentials({ identifier, password }) {
   return null
 }
 
-function formatHistoryItem(entry, db) {
-  const collection = entry.contentType === 'book' ? db.books : db.articles
+async function getArticlesCollection(db) {
+  const fileArticles = await readFileArticles()
+
+  return [...db.articles, ...fileArticles]
+}
+
+function formatHistoryItem(entry, collections) {
+  const collection =
+    entry.contentType === 'book' ? collections.books : collections.articles
   const content = collection.find((item) => item.id === entry.contentId)
 
   return {
@@ -230,10 +238,16 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   const db = req.db ?? (await readDb())
-  const history = db.history
-    .filter((entry) => entry.userId === req.user.id)
-    .sort((a, b) => new Date(b.accessedAt) - new Date(a.accessedAt))
-    .map((entry) => formatHistoryItem(entry, db))
+  const collections = {
+    books: db.books,
+    articles: await getArticlesCollection(db),
+  }
+  const history = await Promise.all(
+    db.history
+      .filter((entry) => entry.userId === req.user.id)
+      .sort((a, b) => new Date(b.accessedAt) - new Date(a.accessedAt))
+      .map((entry) => formatHistoryItem(entry, collections)),
+  )
 
   return res.json({
     user: sanitizeUser(req.user),
@@ -253,8 +267,9 @@ app.get('/api/books', authMiddleware, async (req, res) => {
 
 app.get('/api/articles', authMiddleware, async (req, res) => {
   const db = req.db ?? (await readDb())
+  const articles = await getArticlesCollection(db)
   res.json({
-    items: db.articles.map(({ content, ...article }) => ({
+    items: articles.map(({ content, ...article }) => ({
       ...article,
       preview: `${content.slice(0, 120)}...`,
     })),
@@ -264,7 +279,12 @@ app.get('/api/articles', authMiddleware, async (req, res) => {
 app.get('/api/content/:type/:id', authMiddleware, async (req, res) => {
   const { type, id } = req.params
   const db = req.db ?? (await readDb())
-  const collection = type === 'book' ? db.books : type === 'article' ? db.articles : null
+  const collection =
+    type === 'book'
+      ? db.books
+      : type === 'article'
+        ? await getArticlesCollection(db)
+        : null
 
   if (!collection) {
     return res.status(400).json({ message: 'Unsupported content type.' })
@@ -294,10 +314,16 @@ app.get('/api/content/:type/:id', authMiddleware, async (req, res) => {
 
 app.get('/api/history', authMiddleware, async (req, res) => {
   const db = req.db ?? (await readDb())
-  const history = db.history
-    .filter((entry) => entry.userId === req.user.id)
-    .sort((a, b) => new Date(b.accessedAt) - new Date(a.accessedAt))
-    .map((entry) => formatHistoryItem(entry, db))
+  const collections = {
+    books: db.books,
+    articles: await getArticlesCollection(db),
+  }
+  const history = await Promise.all(
+    db.history
+      .filter((entry) => entry.userId === req.user.id)
+      .sort((a, b) => new Date(b.accessedAt) - new Date(a.accessedAt))
+      .map((entry) => formatHistoryItem(entry, collections)),
+  )
 
   res.json({ items: history })
 })
